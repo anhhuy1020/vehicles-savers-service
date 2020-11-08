@@ -1,0 +1,9 @@
+﻿{
+    "mode" : "dev",
+    "dev": {
+      "PORT": 3001,
+      "HOST": "http://localhost:3001",
+      "connectionString": "mongodb+srv://huyhq4:Huy3763958@cluster0.xs2nt.mongodb.net/vehicles-saver?retryWrites=true&w=majority",
+      "secret": "HuyHQ4"
+    }
+  }
