@@ -6,4 +6,4 @@
       "connectionString": "mongodb+srv://huyhq4:Huy3763958@cluster0.xs2nt.mongodb.net/vehicles-saver?retryWrites=true&w=majority",
       "secret": "HuyHQ4"
     }
-  }
+}

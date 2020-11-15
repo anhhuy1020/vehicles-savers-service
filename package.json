@@ -21,7 +21,10 @@
         "mongodb": "^3.5.9",
         "mongoose": "^5.9.21",
         "rootpath": "^0.1.2",
-        "validator": "^13.1.17"
+        "socket.io": "2.2.0",
+        "underscore": "^1.11.0",
+        "validator": "^13.1.17",
+        "ws": "^7.4.0"
     },
     "devDependencies": {
         "nodemon": "^2.0.4"

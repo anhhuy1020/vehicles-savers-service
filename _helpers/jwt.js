@@ -10,14 +10,15 @@ function jwt() {
     return expressJwt({ secret, algorithms: ['HS256'], isRevoked }).unless({
         path: [
             // public routes that don't require authentication
-            '/login',
-            '/customers/register'
+            '/customers/login',
+            '/customers/register',
+            '/partners/login',
         ]
     });
 }
 
 async function isRevoked(req, payload, done) {
-    const user = await userService.getById(payload.sub);
+    const user = await userService.getById(payload.id);
 
     // revoke token if user no longer exists
     if (!user) {

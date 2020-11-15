@@ -25,7 +25,7 @@ async function authenticate({ email, password }) {
     const user = await User.findOne({ email });
     if (user && bcrypt.compareSync(password, user.hash)) {
         getInfoByRole(user);
-        const token = jwt.sign({ sub: user.id }, config[mode].secret, { expiresIn: '7d' });
+        const token = jwt.sign({ id: user._id, role: user.role }, config[mode].secret, { expiresIn: '7d' });
         return {
             ...user.toJSON(),
             token
@@ -63,10 +63,9 @@ async function create(userParam) {
 
     getInfoByRole(user);
     const token = jwt.sign({ sub: user.id }, config[mode].secret, { expiresIn: '7d' });
-    return {
-        ...user.toJSON(),
-        token
-    };
+    var ret = user.toJSON();
+    ret['token'] = token;
+    return ret;
 }
 
 async function update(id, userParam) {
