@@ -1,7 +1,7 @@
 const expressJwt = require('express-jwt');
 const config = require('../config.json');
 const mode = config.mode;
-const userService = require('../services/UserService');
+const userService = require('../service/UserService');
 
 module.exports = jwt;
 
@@ -17,7 +17,8 @@ function jwt() {
     });
 }
 
-async function isRevoked(req, payload, done) {
+async function isRevoked(req, payload, 
+    done) {
     const user = await userService.getById(payload.id);
 
     // revoke token if user no longer exists

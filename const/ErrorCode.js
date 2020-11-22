@@ -1,4 +1,4 @@
-var ERROR_CODE = {
+const ERROR_CODE = {
     SUCCESS: 0,
     FAIL: 1
 }

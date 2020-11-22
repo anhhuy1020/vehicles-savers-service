@@ -31,4 +31,4 @@ const httpServer = app.listen(port, function () {
     console.log('Server listening on port ' + port);
 });
 
-new ServerSocket(httpServer);
+global.serverSocket = new ServerSocket(httpServer);

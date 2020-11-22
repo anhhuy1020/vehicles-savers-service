@@ -3,7 +3,7 @@ validator = require('validator');
 function validateRegister (data){
   var result = [];
   try {
-    if(!validator.isAlpha(data['name'])){
+    if(validator.isAlpha(data['name'], ['vi-VN'])){
       result.push("Name is invalid!");
     }
     if(!validator.isMobilePhone(data['phone'])){
@@ -16,7 +16,7 @@ function validateRegister (data){
       result.push("Password is invalid!");
     }
   } catch (e){
-    result.push("Invalid req data: " + data)
+    result.push("Invalid req data: ", "\n", data, "\n,", e)
   }
   return result;
 }
@@ -36,8 +36,40 @@ function validateLogin (data) {
   return result;
 }
 
+function createDemand (data) {
+  var result = [];
+  try {
+    if(isNaN(data['pickupLatitude'])){
+      result.push("pickupLatitude is not number!");
+    }
+    if(isNaN(data['pickupLongitude'])){
+      result.push("pickupLatitude is not number!");
+    }
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
+function fetchListDemand (data) {
+  var result = [];
+  try {
+    if(isNaN(data['latitude'])){
+      result.push("latitude is not number!");
+    }
+    if(isNaN(data['longitude'])){
+      result.push("longitude is not number!");
+    }
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
+
 
 module.exports = {
     validateRegister,
-    validateLogin
+    validateLogin,
+    createDemand
 }

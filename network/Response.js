@@ -1,4 +1,4 @@
-const ERROR_CODE = require('../network/ErrorCode');
+const ERROR_CODE = require('../const/ErrorCode');
 
 class Response{
     constructor(){

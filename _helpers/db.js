@@ -6,5 +6,8 @@ mongoose.connect(config[mode].connectionString, connectionOptions);
 mongoose.Promise = global.Promise;
 
 module.exports = {
-    User: require('../models/User')
+    User: require('../models/User'),
+    Customer: require('../models/Customer'),
+    Demand: require('../models/Demand'),
+    Partner: require('../models/Partner')
 };

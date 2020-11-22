@@ -5,36 +5,26 @@ const bcrypt = require('bcryptjs');
 const db = require('../_helpers/db');
 const User = db.User;
 
-const ROLE = {
-    ADMIN:0,
-    PARTNER:1,
-    CUSTOMER:2
-}
 
 module.exports = {
     authenticate,
     getAll,
     getById,
+    getByEmail,
     create,
     update,
-    delete: _delete,
-    ROLE
+    delete: _delete
 };
 
 async function authenticate({ email, password }) {
     const user = await User.findOne({ email });
     if (user && bcrypt.compareSync(password, user.hash)) {
-        getInfoByRole(user);
         const token = jwt.sign({ id: user._id, role: user.role }, config[mode].secret, { expiresIn: '7d' });
         return {
             ...user.toJSON(),
             token
         };
     }
-}
-
-function getInfoByRole(){
-
 }
 
 async function getAll() {
@@ -45,9 +35,15 @@ async function getById(id) {
     return await User.findById(id);
 }
 
+async function getByEmail(email) {
+    return await User.findOne({ email: userParam.email });
+}
+
 async function create(userParam) {
     // validate
+    let userr = await User.findOne({ email: userParam.email });
     if (await User.findOne({ email: userParam.email })) {
+        console.log("user: ", userr)
         throw 'Email "' + userParam.email + '" is already taken';
     }
     console.log("create: ", userParam);
@@ -61,7 +57,6 @@ async function create(userParam) {
     // save user
     await user.save();
 
-    getInfoByRole(user);
     const token = jwt.sign({ sub: user.id }, config[mode].secret, { expiresIn: '7d' });
     var ret = user.toJSON();
     ret['token'] = token;
