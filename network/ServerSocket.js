@@ -48,10 +48,16 @@ class ServerSocket{
             }
         });
 
-        socket.on(EVENT_NAME.CANCEL_DEMAND, function(req){
+        socket.on(EVENT_NAME.CANCEL_DEMAND, function(token){
             try {
-                console.log("login", req);
-                customerService.cancelDemand(socket, req)
+                customerService.cancelDemand(socket, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+        socket.on(EVENT_NAME.PAY, function(token){
+            try {
+                customerService.pay(socket, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -77,6 +83,15 @@ class ServerSocket{
                 console.log("Exception while handling " + e);
             }
         });
+
+        socket.on(EVENT_NAME.FETCH_CURRENT_DEMAND, function(token){
+            try {
+                partnerService.fetchCurrentDemand(socket, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
         socket.on(EVENT_NAME.FETCH_LIST_DEMAND, function(req, token){
             try {
                 partnerService.fetchListDemand(socket, req, token)
@@ -85,10 +100,26 @@ class ServerSocket{
             }
         });
 
+        socket.on(EVENT_NAME.ACCEPT_DEMAND, function(req, token){
+            try {
+                partnerService.acceptDemand(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+        socket.on(EVENT_NAME.INVOICE, function(req, token){
+            try {
+                console.log("invoice")
+                partnerService.invoice(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
         socket.on("disconnect", function(){
             try {
                 partnerService.detachSocketFromPartner(socket['userId'], socket.id)
-                console.log("Client disconnect!");
+                console.log("Partner disconnect!");
             } catch(e) {
                 console.log("Exception while handling " + e);
             }

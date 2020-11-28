@@ -11,7 +11,10 @@ const schema = new Schema({
     problemDescription: { type: String, required: false, default: ""},
     vehicleType: { type: String, required: false, default: "unknown"},
     status: {type: String, required: false, default: DEMAND_STATUS.SEARCHING_PARTNER},
-    createdDate: { type: Date, default: Date.now }
+    billId: {type: String, require: false, default: ""},
+    feedbackId: {type: String, require: false, default: ""},
+    createdDate: { type: Date, default: Date.now },
+    completedDate: {type: Date}
 });
 
 module.exports = mongoose.model('Demand', schema);

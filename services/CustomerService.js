@@ -10,10 +10,14 @@ const ERROR_CODE = require('../const/ErrorCode');
 const ROLE = require('../const/Role');
 const User = db.User;
 const DEMAND_STATUS = require('../const/DemandStatus');
-const { HANDLING, SEARCHING_PARTNER } = require('../const/DemandStatus');
+const { sendToAllDevice } = require('./PartnerService');
 const Demand = db.Demand;
 const Customer = db.Customer;
+const Partner = db.Partner;
+const Feedback = db.Feedback;
+const Bill = db.Bill;
 const secretKey = config[mode].secret;
+const PartnerService = require('./PartnerService');
 
 class CustomerService {
 
@@ -43,22 +47,22 @@ class CustomerService {
                         });
                         customerInfo.save();
                     }
-                    let currentDemand;
-                    if(customerInfo.currentDemand != ""){
-                        await Demand.findById(customerInfo.currentDemand);
-                    }
                     console.log("customer info login", customerInfo);
+                    let history = await this.getDemandHistory(customerInfo.history);
+                    let currentDemand = await this.getDemandInfo(customerInfo.currentDemand);
+
                     const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: '7d' });
                     let res = {
                         customer: {
-                            id: user._id,
+                            _id: user._id,
                             name: user.name,
                             email: user.email,
-                            currentDemand: currentDemand,
-                            history: customerInfo.history,
                             address: customerInfo.address,
-                            phone: customerInfo.phone
+                            phone: customerInfo.phone,
+                            avatarUrl: customerInfo.avatarUrl
                         },
+                        history: history,
+                        currentDemand: currentDemand,
                         token: token,
                     }
                     this.attachSocketToCustomer(user._id, socket);
@@ -70,6 +74,7 @@ class CustomerService {
                 socket.emit(EVENT_NAME.LOGIN, new Response().error(ERROR_CODE.FAIL, "Email or password is incorrect!"));
             }
         } catch(e){
+            console.log("login exception ", e);
             socket.emit(EVENT_NAME.LOGIN, new Response().error(ERROR_CODE.FAIL, e));
         }
     }
@@ -123,7 +128,8 @@ class CustomerService {
                     currentDemand: currentDemand,
                     history: customerInfo.history,
                     address: customerInfo.address,
-                    phone: customerInfo.phone
+                    phone: customerInfo.phone,
+                    avatarUrl: customerInfo.avatarUrl
                 },
                 token: token,
             }
@@ -182,7 +188,7 @@ class CustomerService {
             console.log("fetchCurrentDemand customer", customer);
 
             if(!customer){
-                socket.emit(EVENT_NAME.CREATE_DEMAND, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
                 return;
             }
 
@@ -190,7 +196,7 @@ class CustomerService {
                 return;
             }
 
-            let demand = await Demand.findById(customer.currentDemand);
+            let demand = await this.getDemandInfo(customer.currentDemand);
 
             console.log("fetchCurrentDemand", demand);
             socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(demand));
@@ -201,11 +207,160 @@ class CustomerService {
         }
     }
 
+    async pay(socket, token) {
+        try {
+            let customer =  await this.verifyToken(token);
+            console.log("fetchCurrentDemand customer", customer);
+
+            if(!customer){
+                socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            if(customer.currentDemand == ""){
+                socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Haven't had demand yet"));
+                return;
+            }
+
+            let demand = await Demand.findById(customer.currentDemand);
+            if(demand.status != DEMAND_STATUS.PAYING){
+                socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Not paying phase"));
+                return;
+            }
+            
+            let partner = await Partner.findOne({userId: demand.partnerId});
+            if(partner){
+                partner.currentDemand = "";
+                if(!partner.history){
+                    partner.history = [];
+                }
+                partner.history.push(demand._id)
+                partner.save();
+            }
+            customer.currentDemand = "";
+            customer.history.push(demand._id);
+            customer.save();
+
+            demand.status == DEMAND_STATUS.COMPLETED;
+            demand.completedDate = Date().now();
+            demand.save();
+
+            let res = await this.getDemandInfo(demand._id);
+
+            console.log("completed", res);
+            this.sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            PartnerService.sendToAllDevice(demand.partnerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+        } catch(e){
+            console.log("createDemand: ", e);
+            socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
     attachSocketToCustomer(userId, socket){
         if(!this.listCustomerSocket[userId]){
             this.listCustomerSocket[userId] = [];
         }
         this.listCustomerSocket[userId].push(socket);
+    }
+    async getDemandInfo(demandId) {
+        if (demandId.length <= 0){
+            return null;
+        }
+        let demand = await Demand.findById(demandId);
+        if(demand){
+            let customerInfo = {};
+            let partnerInfo = {};
+
+            if (demand.customerId.length > 0){
+                let customer = await Customer.findOne({userId: demand.customerId});
+                if(customer){
+                    customerInfo.phone = customer.phone;
+                    customerInfo.avatarUrl = customer.avatarUrl;
+                }
+                let userCustomer = await User.findById(demand.customerId);
+                if (userCustomer){
+                    customerInfo.name = userCustomer.name;
+                    customerInfo.email = userCustomer.email;
+                }
+            }
+
+            if (demand.partnerId.length > 0){
+                let partner = await Partner.findOne({userId: demand.partnerId});
+                if(partner){
+                    partnerInfo._id = partner._id;
+                    partnerInfo.phone = partner.phone;
+                    partnerInfo.avatarUrl = partner.avatarUrl;
+                    partnerInfo.latitude = partner.latitude;
+                    partnerInfo.longitude = partner.longitude;
+                    partnerInfo.rating = partner.rating;
+                    partnerInfo.nRating = partner.nRating;
+                }
+                let userPartner = await User.findById(partner.userId);
+                if (userPartner){
+                        partnerInfo.name =userPartner.name;
+                        partnerInfo.email = userPartner.email;
+                };
+            }
+
+
+            let billInfo = {};
+
+            if (demand.billId.length > 0){
+                let bill = await Bill.findById(demand.billId);
+                if(bill){
+                    billInfo.items = bill.items;
+                    billInfo.fee = bill.fee;
+                    billInfo.createdDate = bill.createdDate;
+                }
+            }
+
+            let feedbackInfo = {};
+
+            if (demand.feedbackId.length > 0){
+                let feedback = await Feedback.findById(demand.feedbackId);
+                if(feedback){
+                    feedbackInfo.rating = feedback.rating;
+                    feedbackInfo.comment = feedback.comment;
+                    feedbackInfo.images = feedback.images;
+                    feedbackInfo.createdDate = feedback.createdDate;
+                }
+            }
+
+            return {
+                addressDetail: demand.addressDetail,
+                problemDescription: demand.problemDescription,
+                vehicleType: demand.vehicleType,
+                status: demand.status,
+                _id: demand._id,
+                pickupLongitude: demand.pickupLatitude,
+                pickupLatitude: demand.pickupLongitude,
+                customer: Object.keys(customerInfo).length === 0? null: customerInfo,
+                partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,
+                bill: Object.keys(billInfo).length === 0? null: billInfo,
+                feedback: Object.keys(feedbackInfo).length === 0? null: feedbackInfo,
+            }
+        } else{
+            return null;
+        }
+    }
+    async getDemandHistory(listId){
+        if (listId.length <= 0){
+            return [];
+        }
+        let result = [];
+
+        for (const key in listId) {
+            if (listId.hasOwnProperty(key)) {
+                const demandId = listId[key];
+                if(demandId.length > 0){
+                    let demand = await this.getDemandInfo(demandId);
+                    if(demand){
+                        result.push(demand);
+                    }
+                 }
+            }
+        }
+        return result;
     }
 
     detachSocketFromCustomer(userId, socket){

@@ -9,5 +9,7 @@ module.exports = {
     User: require('../models/User'),
     Customer: require('../models/Customer'),
     Demand: require('../models/Demand'),
-    Partner: require('../models/Partner')
+    Partner: require('../models/Partner'),
+    Bill: require('../models/Bill'),
+    Feedback: require('../models/Feedback'),
 };

@@ -1,7 +1,9 @@
+const { isEmpty } = require('underscore');
+
 validator = require('validator');
 
 function validateRegister (data){
-  var result = [];
+  let result = [];
   try {
     if(validator.isAlpha(data['name'], ['vi-VN'])){
       result.push("Name is invalid!");
@@ -22,7 +24,7 @@ function validateRegister (data){
 }
 
 function validateLogin (data) {
-  var result = [];
+  let result = [];
   try {
     if(!validator.isEmail(data['email'])){
       result.push("Email is invalid!");
@@ -37,7 +39,7 @@ function validateLogin (data) {
 }
 
 function createDemand (data) {
-  var result = [];
+  let result = [];
   try {
     if(isNaN(data['pickupLatitude'])){
       result.push("pickupLatitude is not number!");
@@ -52,7 +54,7 @@ function createDemand (data) {
   return result;
 }
 function fetchListDemand (data) {
-  var result = [];
+  let result = [];
   try {
     if(isNaN(data['latitude'])){
       result.push("latitude is not number!");
@@ -66,10 +68,55 @@ function fetchListDemand (data) {
   }
   return result;
 }
+function acceptDemand (data) {
+  let result = [];
+  try {
+    if(validator.isEmpty(data['demandId'])){
+      result.push("demandId is empty!");
+    }
+
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
+
+function invoice (data) {
+  let result = [];
+  try {
+    if(!Array.isArray(data) && data.length <=0){
+      result.push("items is empty!");
+    }
+
+    let totalCost = 0;
+
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        const element = data[key];
+        let cost = element['cost'];
+        if(!isNaN(cost)){
+          totalCost += cost;
+        }
+      }
+    }
+    if(isNaN(totalCost) || totalCost <= 0){
+      result.push("Total cost is <= 0!");
+    }
+
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
 
 
 module.exports = {
     validateRegister,
     validateLogin,
-    createDemand
+    createDemand,
+    fetchListDemand,
+    acceptDemand,
+    invoice,
 }

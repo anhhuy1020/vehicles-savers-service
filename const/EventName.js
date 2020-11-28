@@ -6,6 +6,9 @@ const EVENT_NAME = {
     CREATE_DEMAND: "create_demand",
     FETCH_HISTORY: "fetch_history",
     CANCEL_DEMAND: "cancel_demand",
+    ACCEPT_DEMAND: "accept_demand",
+    INVOICE: "invoice",
+    PAY: "pay"
 }
 
 module.exports = EVENT_NAME;
