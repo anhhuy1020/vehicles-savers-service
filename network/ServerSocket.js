@@ -1,5 +1,5 @@
-const customerService = require('../services/CustomerService');
-const partnerService = require('../services/PartnerService');
+const CustomerService = require('../services/CustomerService');
+const PartnerService = require('../services/PartnerService');
 const ERROR_CODE = require('../const/ErrorCode');
 const EVENT_NAME = require('../const/EventName');
 const Response = require('./Response');
@@ -17,7 +17,7 @@ class ServerSocket{
         socket.on(EVENT_NAME.LOGIN, function(req){
             try {
                 console.log("login", req);
-                customerService.login(socket, req)
+                CustomerService.getInstance().login(socket, req)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -34,7 +34,7 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.CREATE_DEMAND, function(req, token){
             try {
-                customerService.createDemand(socket, req, token)
+                CustomerService.getInstance().createDemand(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -42,7 +42,7 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.FETCH_CURRENT_DEMAND, function(token){
             try {
-                customerService.fetchCurrentDemand(socket, token)
+                CustomerService.getInstance().fetchCurrentDemand(socket, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -50,14 +50,24 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.CANCEL_DEMAND, function(token){
             try {
-                customerService.cancelDemand(socket, token)
+                CustomerService.getInstance().cancelDemand(socket, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
         });
         socket.on(EVENT_NAME.PAY, function(token){
             try {
-                customerService.pay(socket, token)
+                console.log("pay!!");
+                CustomerService.getInstance().pay(socket, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
+        socket.on(EVENT_NAME.CHAT, function(req, token){
+            try {
+                console.log("chat")
+                CustomerService.getInstance().chat(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -65,7 +75,7 @@ class ServerSocket{
 
         socket.on("disconnect", function(){
             try {
-                customerService.detachSocketFromCustomer(socket['userId'], socket)
+                CustomerService.getInstance().detachSocketFromCustomer(socket['userId'], socket)
                 console.log("Client disconnect!");
             } catch(e) {
                 console.log("Exception while handling " + e);
@@ -78,7 +88,7 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.LOGIN, function(req){
             try {
-                partnerService.login(socket, req)
+                PartnerService.getInstance().login(socket, req)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -86,7 +96,7 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.FETCH_CURRENT_DEMAND, function(token){
             try {
-                partnerService.fetchCurrentDemand(socket, token)
+                PartnerService.getInstance().fetchCurrentDemand(socket, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -94,7 +104,7 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.FETCH_LIST_DEMAND, function(req, token){
             try {
-                partnerService.fetchListDemand(socket, req, token)
+                PartnerService.getInstance().fetchListDemand(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -102,23 +112,32 @@ class ServerSocket{
 
         socket.on(EVENT_NAME.ACCEPT_DEMAND, function(req, token){
             try {
-                partnerService.acceptDemand(socket, req, token)
-            } catch(e) {
-                console.log("Exception while handling " + e);
-            }
-        });
-        socket.on(EVENT_NAME.INVOICE, function(req, token){
-            try {
-                console.log("invoice")
-                partnerService.invoice(socket, req, token)
+                PartnerService.getInstance().acceptDemand(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
         });
 
+        socket.on(EVENT_NAME.INVOICE, function(req, token){
+            try {
+                console.log("invoice")
+                PartnerService.getInstance().invoice(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
+        socket.on(EVENT_NAME.CHAT, function(req, token){
+            try {
+                console.log("chat")
+                PartnerService.getInstance().chat(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
         socket.on("disconnect", function(){
             try {
-                partnerService.detachSocketFromPartner(socket['userId'], socket.id)
+                PartnerService.getInstance().detachSocketFromPartner(socket['userId'], socket.id)
                 console.log("Partner disconnect!");
             } catch(e) {
                 console.log("Exception while handling " + e);

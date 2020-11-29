@@ -10,13 +10,15 @@ const ERROR_CODE = require('../const/ErrorCode');
 const ROLE = require('../const/Role');
 const User = db.User;
 const DEMAND_STATUS = require('../const/DemandStatus');
-const { sendToAllDevice } = require('./PartnerService');
 const Demand = db.Demand;
 const Customer = db.Customer;
 const Partner = db.Partner;
 const Feedback = db.Feedback;
 const Bill = db.Bill;
 const secretKey = config[mode].secret;
+
+
+module.exports = {getInstance}
 const PartnerService = require('./PartnerService');
 
 class CustomerService {
@@ -112,7 +114,7 @@ class CustomerService {
             await user.save();
             await customerInfo.save();
             let currentDemand;
-            if(customerInfo.currentDemand != ""){
+            if(customerInfo.currentDemand){
                 await Demand.findById(customerInfo.currentDemand);
             }
             console.log("customerInfo", customerInfo);
@@ -156,7 +158,7 @@ class CustomerService {
             }
 
             let demand;
-            if(customer.currentDemand != ""){
+            if(customer.currentDemand){
                 demand = await Demand.findById(customer.currentDemand);
                 if(demand && demand.status != DEMAND_STATUS.SEARCHING_PARTNER){
                     socket.emit(EVENT_NAME.CREATE_DEMAND, new Response().error(ERROR_CODE.FAIL, "Already had a demand!"));
@@ -165,16 +167,18 @@ class CustomerService {
             }
 
             if(!demand){
-                demand = await DemandService.create({...req, customerId: customer.userId});
+                demand = new Demand({...req, customerId: customer.userId});
+                await demand.save();
                 customer.currentDemand = demand._id;
                 await customer.save();
             } else{
                 Object.assign(demand, req);
                 await demand.save();
             }
-            console.log("demand", demand);
+            let res = await this.getDemandInfo(demand._id);
+            console.log("createDemand: ", res);
             socket.emit(EVENT_NAME.CREATE_DEMAND, new Response());
-            this.sendToAllDevice(customer.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(demand));
+            this.sendToAllDevice(customer.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
 
         } catch(e){
             console.log("createDemand: ", e);
@@ -197,6 +201,10 @@ class CustomerService {
             }
 
             let demand = await this.getDemandInfo(customer.currentDemand);
+            if(!demand){
+                socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
 
             console.log("fetchCurrentDemand", demand);
             socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(demand));
@@ -210,7 +218,7 @@ class CustomerService {
     async pay(socket, token) {
         try {
             let customer =  await this.verifyToken(token);
-            console.log("fetchCurrentDemand customer", customer);
+            console.log("pay customer", customer);
 
             if(!customer){
                 socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
@@ -223,11 +231,15 @@ class CustomerService {
             }
 
             let demand = await Demand.findById(customer.currentDemand);
+            if(!demand){
+                socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
             if(demand.status != DEMAND_STATUS.PAYING){
                 socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Not paying phase"));
                 return;
             }
-            
+
             let partner = await Partner.findOne({userId: demand.partnerId});
             if(partner){
                 partner.currentDemand = "";
@@ -235,24 +247,68 @@ class CustomerService {
                     partner.history = [];
                 }
                 partner.history.push(demand._id)
-                partner.save();
             }
             customer.currentDemand = "";
             customer.history.push(demand._id);
-            customer.save();
 
-            demand.status == DEMAND_STATUS.COMPLETED;
-            demand.completedDate = Date().now();
-            demand.save();
+            demand.status = DEMAND_STATUS.COMPLETED;
+            demand.completedDate = Date.now();
+
+            partner && await partner.save();
+            await customer.save();
+            await demand.save();
 
             let res = await this.getDemandInfo(demand._id);
 
             console.log("completed", res);
             this.sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
-            PartnerService.sendToAllDevice(demand.partnerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            PartnerService.getInstance().sendToAllDevice(demand.partnerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
         } catch(e){
             console.log("createDemand: ", e);
             socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
+    async chat(socket, req, token) {
+        try {
+            let customer =  await this.verifyToken(token);
+            console.log("CHAT", customer);
+
+            if(!customer){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            if(customer.currentDemand == ""){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Haven't had demand yet"));
+                return;
+            }
+
+            let demand = await Demand.findById(customer.currentDemand);
+            if(!demand){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
+            if(demand.status != DEMAND_STATUS.HANDLING){
+                socket.emit(EVENT_NAME.PAY, new Response().error(ERROR_CODE.FAIL, "Not handling phase"));
+                return;
+            }
+
+            if (!demand.messages){
+                demand.messages = [];
+            }
+
+            demand.messages.push({userId: customer.userId, content: req, time: Date.now()})
+            await demand.save();
+
+            let res = await this.getDemandInfo(demand._id);
+
+            console.log("chat", res);
+            this.sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            PartnerService.getInstance().sendToAllDevice(demand.partnerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+        } catch(e){
+            console.log("CHAT exception: ", e);
+            socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Fail"));
         }
     }
 
@@ -263,7 +319,7 @@ class CustomerService {
         this.listCustomerSocket[userId].push(socket);
     }
     async getDemandInfo(demandId) {
-        if (demandId.length <= 0){
+        if (!demandId){
             return null;
         }
         let demand = await Demand.findById(demandId);
@@ -271,7 +327,7 @@ class CustomerService {
             let customerInfo = {};
             let partnerInfo = {};
 
-            if (demand.customerId.length > 0){
+            if (demand.customerId){
                 let customer = await Customer.findOne({userId: demand.customerId});
                 if(customer){
                     customerInfo.phone = customer.phone;
@@ -284,7 +340,7 @@ class CustomerService {
                 }
             }
 
-            if (demand.partnerId.length > 0){
+            if (demand.partnerId){
                 let partner = await Partner.findOne({userId: demand.partnerId});
                 if(partner){
                     partnerInfo._id = partner._id;
@@ -316,7 +372,7 @@ class CustomerService {
 
             let feedbackInfo = {};
 
-            if (demand.feedbackId.length > 0){
+            if (demand.feedbackId){
                 let feedback = await Feedback.findById(demand.feedbackId);
                 if(feedback){
                     feedbackInfo.rating = feedback.rating;
@@ -332,8 +388,9 @@ class CustomerService {
                 vehicleType: demand.vehicleType,
                 status: demand.status,
                 _id: demand._id,
-                pickupLongitude: demand.pickupLatitude,
-                pickupLatitude: demand.pickupLongitude,
+                pickupLatitude: demand.pickupLatitude,
+                pickupLongitude: demand.pickupLongitude,
+                messages: demand.messages,
                 customer: Object.keys(customerInfo).length === 0? null: customerInfo,
                 partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,
                 bill: Object.keys(billInfo).length === 0? null: billInfo,
@@ -352,7 +409,7 @@ class CustomerService {
         for (const key in listId) {
             if (listId.hasOwnProperty(key)) {
                 const demandId = listId[key];
-                if(demandId.length > 0){
+                if(demandId){
                     let demand = await this.getDemandInfo(demandId);
                     if(demand){
                         result.push(demand);
@@ -396,6 +453,11 @@ class CustomerService {
     }
 }
 
-let instance = new CustomerService();
+let instance;
 
-module.exports = instance
+function getInstance(){
+    if(!instance){
+        instance = new CustomerService();
+    }
+    return instance;
+}

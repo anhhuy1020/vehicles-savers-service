@@ -1,4 +1,4 @@
-﻿const CustomerService = require('./CustomerService.js');
+﻿
 const validator = require('../validator/Validator');
 const Response = require('../network/Response');
 const jwt = require("jsonwebtoken");
@@ -18,6 +18,9 @@ const Demand = db.Demand;
 const Customer = db.Customer;
 const Bill = db.Bill;
 
+
+module.exports = {getInstance}
+const CustomerService = require('./CustomerService.js');
 class PartnerService {
 
     constructor(serverSocket){
@@ -95,7 +98,10 @@ class PartnerService {
             }
 
             let demand = await this.getDemandInfo(partner.currentDemand);
-
+            if(!demand){
+                socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
             console.log("fetchCurrentDemand", demand);
             socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(demand));
 
@@ -152,8 +158,8 @@ class PartnerService {
                         vehicleType: demand.vehicleType,
                         status: demand.status,
                         _id: demand._id,
-                        pickupLongitude: demand.pickupLatitude,
-                        pickupLatitude: demand.pickupLongitude,
+                        pickupLatitude: demand.pickupLatitude,
+                        pickupLongitude: demand.pickupLongitude,
                         customer: {...customerInfo,
                         _id: demand.customerId}
                     })
@@ -218,7 +224,7 @@ class PartnerService {
 
             socket.emit(EVENT_NAME.ACCEPT_DEMAND, new Response().json(res));
             this.sendToAllDevice(partner.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res), socket);
-            CustomerService.sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            CustomerService.getInstance().sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
 
         } catch(e){
             console.log("createDemand: ", e);
@@ -277,13 +283,57 @@ class PartnerService {
 
             socket.emit(EVENT_NAME.INVOICE, new Response());
             this.sendToAllDevice(partner.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
-            CustomerService.sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            CustomerService.getInstance().sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
 
         } catch(e){
             console.log("createDemand: ", e);
             socket.emit(EVENT_NAME.INVOICE, new Response().error(ERROR_CODE.FAIL, "Fail"));
         }
     }
+
+    async chat(socket, req, token) {
+        try {
+            let partner =  await this.verifyToken(token);
+            console.log("CHAT", partner);
+
+            if(!partner){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            if(partner.currentDemand == ""){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Haven't had demand yet"));
+                return;
+            }
+
+            let demand = await Demand.findById(partner.currentDemand);
+            if(!demand){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
+            if(demand.status != DEMAND_STATUS.HANDLING){
+                socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Not handling phase"));
+                return;
+            }
+
+            if (!demand.messages){
+                demand.messages = [];
+            }
+
+            demand.messages.push({userId: partner.userId, content: req, time: Date.now()})
+            await demand.save();
+
+            let res = await this.getDemandInfo(demand._id);
+
+            console.log("chat", res);
+            this.sendToAllDevice(demand.partnerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            CustomerService.getInstance().sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+        } catch(e){
+            console.log("chat: ", e);
+            socket.emit(EVENT_NAME.CHAT, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
 
     attachSocketToPartner(userId, socket){
         if(!this.listPartnerSocket[userId]){
@@ -311,7 +361,7 @@ class PartnerService {
             let customerInfo = {};
             let partnerInfo = {};
 
-            if (demand.customerId.length > 0){
+            if (demand.customerId.length){
                 let customer = await Customer.findOne({userId: demand.customerId});
                 if(customer){
                     customerInfo.phone = customer.phone;
@@ -324,7 +374,7 @@ class PartnerService {
                 }
             }
 
-            if (demand.partnerId.length > 0){
+            if (demand.partnerId.length){
                 let partner = await Partner.findOne({userId: demand.partnerId});
                 if(partner){
                     partnerInfo._id = partner._id;
@@ -342,7 +392,7 @@ class PartnerService {
 
             let billInfo = {};
 
-            if (demand.billId.length > 0){
+            if (demand.billId.length){
                 let bill = await Bill.findById(demand.billId);
                 console.log("bill: ", bill);
                 if(bill){
@@ -358,8 +408,9 @@ class PartnerService {
                 vehicleType: demand.vehicleType,
                 status: demand.status,
                 _id: demand._id,
-                pickupLongitude: demand.pickupLatitude,
-                pickupLatitude: demand.pickupLongitude,
+                pickupLatitude: demand.pickupLatitude,
+                pickupLongitude: demand.pickupLongitude,
+                messages: demand.messages,
                 customer: Object.keys(customerInfo).length === 0? null: customerInfo,
                 partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,
                 bill: Object.keys(billInfo).length === 0? null: billInfo,
@@ -377,15 +428,21 @@ class PartnerService {
 
         for (const key in listId) {
             if (listId.hasOwnProperty(key)) {
+
                 const demandId = listId[key];
-                if(demandId.length > 0){
+                console.log("key", key, demandId);
+
+                if(demandId){
                     let demand = await this.getDemandInfo(demandId);
+                    console.log("demand", demand, demandId);
+
                     if(demand){
                         result.push(demand);
                     }
                  }
             }
         }
+    
         return result;
     }
 
@@ -411,6 +468,10 @@ class PartnerService {
         return await Partner.findOne({userId: payload.id});
     }
 }
-let instance = new PartnerService();
-
-module.exports = instance
+let instance;
+function getInstance(){
+    if(!instance){
+        instance = new PartnerService();
+    }
+    return instance;
+}

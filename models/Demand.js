@@ -13,7 +13,8 @@ const schema = new Schema({
     status: {type: String, required: false, default: DEMAND_STATUS.SEARCHING_PARTNER},
     billId: {type: String, require: false, default: ""},
     feedbackId: {type: String, require: false, default: ""},
-    createdDate: { type: Date, default: Date.now },
+    createdDate: { type: Date, require:false, default: Date.now },
+    messages: {type: Array, require: false, default: []},
     completedDate: {type: Date}
 });
 
