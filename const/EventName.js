@@ -9,7 +9,8 @@ const EVENT_NAME = {
     ACCEPT_DEMAND: "accept_demand",
     INVOICE: "invoice",
     PAY: "pay",
-    CHAT: "chat"
+    CHAT: "chat",
+    EVALUATE: "evaluate"
 }
 
 module.exports = EVENT_NAME;

@@ -110,6 +110,27 @@ function invoice (data) {
   }
   return result;
 }
+function evaluate (data) {
+  let result = [];
+  try {
+    if(!data['demandId']){
+      result.push("demandId is bull!");
+    }
+  
+    if(isNaN(data['rating'])){
+      result.push("Rating is not a number!");
+    }
+
+    if(data['rating'] < 0 || data['rating'] > 5){
+      result.push("Rating must be in 0 -> 5!");
+    }
+
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
 
 
 module.exports = {
@@ -119,4 +140,5 @@ module.exports = {
     fetchListDemand,
     acceptDemand,
     invoice,
+    evaluate
 }

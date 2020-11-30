@@ -53,6 +53,8 @@ class CustomerService {
                     let history = await this.getDemandHistory(customerInfo.history);
                     let currentDemand = await this.getDemandInfo(customerInfo.currentDemand);
 
+                    console.log("login history", history);
+
                     const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: '7d' });
                     let res = {
                         customer: {
@@ -312,6 +314,61 @@ class CustomerService {
         }
     }
 
+    async evaluate(socket, req, token) {
+        try {
+            let customer =  await this.verifyToken(token);
+            console.log("evaluate", customer);
+
+            if(!customer){
+                socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            const errors = validator.evaluate(req);
+
+            if (errors.length > 0) {
+                socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, errors));
+                return;
+            }
+
+            let demand;
+            if(req.demandId){
+                demand = await Demand.findById(req.demandId);
+            }
+            if(!demandId){
+                socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
+
+            if(demand.customerId != req.demandId){
+                socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Not your demand"));
+                return;
+            }
+            if(demand.status != DEMAND_STATUS.COMPLETED){
+                socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Demand hasn't been completed yet"));
+                return;
+            }
+
+            if (demand.feedback){
+                socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Demand has already been evaluated"));
+                return;
+            }
+
+            let feedback = new Feedback({req});
+            await feedback.save();
+            demand.feedback = feedback._id;
+            await demand.save();
+
+            let res = feedback;
+
+            console.log("evaluate", res);
+            this.sendToAllDevice(demand.customerId, EVENT_NAME.EVALUATE, new Response().json(res));
+        } catch(e){
+            console.log("Evaluate exception: ", e);
+            socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
     attachSocketToCustomer(userId, socket){
         if(!this.listCustomerSocket[userId]){
             this.listCustomerSocket[userId] = [];
@@ -350,11 +407,13 @@ class CustomerService {
                     partnerInfo.longitude = partner.longitude;
                     partnerInfo.rating = partner.rating;
                     partnerInfo.nRating = partner.nRating;
+                    partnerInfo.nHandling = partner.history.length
                 }
                 let userPartner = await User.findById(partner.userId);
                 if (userPartner){
                         partnerInfo.name =userPartner.name;
                         partnerInfo.email = userPartner.email;
+                        partnerInfo.createdDate = userPartner.createdDate;
                 };
             }
 
@@ -391,6 +450,8 @@ class CustomerService {
                 pickupLatitude: demand.pickupLatitude,
                 pickupLongitude: demand.pickupLongitude,
                 messages: demand.messages,
+                createdDate: demand.createdDate,
+                completedDate: demand.completedDate,
                 customer: Object.keys(customerInfo).length === 0? null: customerInfo,
                 partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,
                 bill: Object.keys(billInfo).length === 0? null: billInfo,

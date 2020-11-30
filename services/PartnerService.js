@@ -410,6 +410,8 @@ class PartnerService {
                 _id: demand._id,
                 pickupLatitude: demand.pickupLatitude,
                 pickupLongitude: demand.pickupLongitude,
+                createdDate: demand.createdDate,
+                completedDate: demand.completedDate,
                 messages: demand.messages,
                 customer: Object.keys(customerInfo).length === 0? null: customerInfo,
                 partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,

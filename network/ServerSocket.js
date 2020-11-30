@@ -72,6 +72,14 @@ class ServerSocket{
                 console.log("Exception while handling " + e);
             }
         });
+        socket.on(EVENT_NAME.EVALUATE, function(req, token){
+            try {
+                console.log("evaluate")
+                CustomerService.getInstance().evaluate(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
 
         socket.on("disconnect", function(){
             try {
