@@ -38,7 +38,6 @@ class CustomerService {
                 return;
             }
             const user = await User.findOne({email: req.email});
-            console.log("user info login", user);
 
             if (user && bcrypt.compareSync(req.password, user.hash)) {
                 if(user.role == ROLE.CUSTOMER){
@@ -49,11 +48,8 @@ class CustomerService {
                         });
                         customerInfo.save();
                     }
-                    console.log("customer info login", customerInfo);
                     let history = await this.getDemandHistory(customerInfo.history);
                     let currentDemand = await this.getDemandInfo(customerInfo.currentDemand);
-
-                    console.log("login history", history);
 
                     const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: '7d' });
                     let res = {
@@ -314,10 +310,10 @@ class CustomerService {
         }
     }
 
-    async evaluate(socket, req, token) {
+    async evaluate(socket,  req, token) {
         try {
             let customer =  await this.verifyToken(token);
-            console.log("evaluate", customer);
+            console.log("evaluate",req.demandId);
 
             if(!customer){
                 socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
@@ -327,6 +323,7 @@ class CustomerService {
             const errors = validator.evaluate(req);
 
             if (errors.length > 0) {
+                console.log("evaluate errors", errors);
                 socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, errors));
                 return;
             }
@@ -335,12 +332,12 @@ class CustomerService {
             if(req.demandId){
                 demand = await Demand.findById(req.demandId);
             }
-            if(!demandId){
+            if(!demand){
                 socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
                 return;
             }
 
-            if(demand.customerId != req.demandId){
+            if(demand.customerId != customer.userId){
                 socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Not your demand"));
                 return;
             }
@@ -349,14 +346,14 @@ class CustomerService {
                 return;
             }
 
-            if (demand.feedback){
+            if (demand.feedbackId){
                 socket.emit(EVENT_NAME.EVALUATE, new Response().error(ERROR_CODE.FAIL, "Demand has already been evaluated"));
                 return;
             }
 
-            let feedback = new Feedback({req});
+            let feedback = new Feedback(req);
             await feedback.save();
-            demand.feedback = feedback._id;
+            demand.feedbackId = feedback._id;
             await demand.save();
 
             let res = feedback;

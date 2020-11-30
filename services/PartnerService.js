@@ -31,7 +31,6 @@ class PartnerService {
     async login(socket, req) {
         try{
             const errors = validator.validateLogin(req);
-            console.log("login", req, errors);
 
             if (errors.length > 0) {
                 socket.emit(EVENT_NAME.LOGIN, new Response().error(ERROR_CODE.FAIL, errors));
@@ -48,7 +47,6 @@ class PartnerService {
                         });
                         partnerInfo.save();
                     }
-                    console.log("partner info login", partnerInfo);
 
                     let demandHistory = await this.getDemandHistory(partnerInfo.history);
                     let currentDemand = await this.getDemandInfo(partnerInfo.currentDemand)
@@ -86,7 +84,6 @@ class PartnerService {
     async fetchCurrentDemand(socket, token) {
         try {
             let partner =  await this.verifyToken(token);
-            console.log("fetchCurrentDemand partner", partner);
 
             if(!partner){
                 socket.emit(EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
@@ -135,15 +132,12 @@ class PartnerService {
 
             let listDemand = [];
             Demand.find({status: DEMAND_STATUS.SEARCHING_PARTNER},async function(err, docs) {
-                console.log("err= ", err);
                 for(let i in docs){
                     let demand = docs[i];
                     let customerInfo;
                     if(demand.customerId != ""){
                         let customer = await Customer.findOne({userId: demand.customerId});
                         let user = await User.findById(demand.customerId);
-                        console.log("customer = ", customer);
-                        console.log("user = ", user);
                          customerInfo =  {
                             name: user.name,
                             email: user.email,
@@ -165,7 +159,6 @@ class PartnerService {
                     })
                 }
 
-                console.log("listDemand ===== ", listDemand);
                 socket.emit(EVENT_NAME.FETCH_LIST_DEMAND, new Response().json(listDemand));
            });
 
@@ -189,7 +182,6 @@ class PartnerService {
                 socket.emit(EVENT_NAME.ACCEPT_DEMAND, new Response().error(ERROR_CODE.FAIL, "Already have a demand"));
                 return;
             }
-            console.log("acceptDemand 3", req, token);
 
             const errors = validator.acceptDemand(req);
 
@@ -197,7 +189,6 @@ class PartnerService {
                 socket.emit(EVENT_NAME.ACCEPT_DEMAND, new Response().error(ERROR_CODE.FAIL, errors));
                 return;
             }
-            console.log("acceptDemand", req, token);
 
             let demand = await Demand.findById(req.demandId);
             if(!demand){
@@ -215,12 +206,6 @@ class PartnerService {
             await partner.save();
 
             let res = await this.getDemandInfo(demand._id);
-
-            console.log("accept : ", partner);
-            console.log("accept 2 : ", demand);
-
-            console.log("acceptDemand : ", res);
-
 
             socket.emit(EVENT_NAME.ACCEPT_DEMAND, new Response().json(res));
             this.sendToAllDevice(partner.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res), socket);
@@ -269,17 +254,11 @@ class PartnerService {
 
             demand.status = DEMAND_STATUS.PAYING;
             let bill = new Bill({items:req, fee: config.fee, demandId: demand._id});
-            console.log("bil bil", bill);
             demand.billId = bill._id;
             await demand.save();
             await bill.save();
 
             let res = await this.getDemandInfo(demand._id);
-
-            console.log("invoice : ", bill);
-            console.log("invoice 2 : ", demand);
-
-            console.log("invoice : ", res);
 
             socket.emit(EVENT_NAME.INVOICE, new Response());
             this.sendToAllDevice(partner.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
@@ -394,7 +373,6 @@ class PartnerService {
 
             if (demand.billId.length){
                 let bill = await Bill.findById(demand.billId);
-                console.log("bill: ", bill);
                 if(bill){
                     billInfo.items = bill.items;
                     billInfo.fee = bill.fee;
@@ -436,8 +414,6 @@ class PartnerService {
 
                 if(demandId){
                     let demand = await this.getDemandInfo(demandId);
-                    console.log("demand", demand, demandId);
-
                     if(demand){
                         result.push(demand);
                     }
