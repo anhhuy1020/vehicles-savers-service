@@ -8,8 +8,6 @@ const schema = new Schema({
     avatarUrl: { type: String, required: false, default: "https://source.unsplash.com/300x300/?portrait"},
     history: {type: Array, require:false, default: []},
     currentDemand: {type: String, require: false, default:""},
-    rating: {type: Number, require: false, default: 0},
-    nRating: {type: Number, require: false, default: 0},
     createdDate: { type: Date, default: Date.now }
 });
 

@@ -14,10 +14,10 @@ app.use(bodyParser.json());
 app.use(cors());
 
 // admin service
-const adminService = require('./services/AdminService');
+const adminController = require('./controllers/AdminController');
 
 // api routes
-app.use("/admin", adminService);
+app.use("/admin", adminController);
 
 // global error handler
 app.use(errorHandler);
