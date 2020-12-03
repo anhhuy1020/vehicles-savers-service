@@ -1,7 +1,7 @@
-﻿const validator = require('../validator/Validator');
+﻿const validator = require('../_helpers/Validator');
 const Response = require('../network/Response');
 const jwt = require("jsonwebtoken");
-const config = require('../config.json');
+const config = require('../config/config.json');
 const mode = config.mode;
 const bcrypt = require('bcryptjs');
 const db = require('../_helpers/db');
@@ -111,12 +111,7 @@ class CustomerService {
             }
             await user.save();
             await customerInfo.save();
-            let currentDemand;
-            if(customerInfo.currentDemand){
-                await Demand.findById(customerInfo.currentDemand);
-            }
-            console.log("customerInfo", customerInfo);
-            console.log("currentDemand", currentDemand)
+
             const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: '7d' });
 
             this.attachSocketToCustomer(user._id, socket);
@@ -125,7 +120,6 @@ class CustomerService {
                     id: user._id,
                     name: user.name,
                     email: user.email,
-                    currentDemand: currentDemand,
                     history: customerInfo.history,
                     address: customerInfo.address,
                     phone: customerInfo.phone,
@@ -133,6 +127,7 @@ class CustomerService {
                 },
                 token: token,
             }
+            console.log("register res = ", res);
             socket.emit(EVENT_NAME.REGISTER, new Response().json(res));
         } catch(e){
             socket.emit(EVENT_NAME.LOGIN, new Response().error(ERROR_CODE.FAIL, e));

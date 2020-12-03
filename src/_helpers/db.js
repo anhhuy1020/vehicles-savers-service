@@ -1,4 +1,4 @@
-const config = require('../../config.json');
+const config = require('../config/config.json');
 const mode = config.mode;
 const mongoose = require('mongoose');
 const connectionOptions = { useCreateIndex: true, useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false };

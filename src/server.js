@@ -2,11 +2,10 @@
 global._ = require('underscore');
 const express = require('express');
 const app = express();
-const config = require('config.json');
+const config = require('../src/config/config.json');
 const mode = config.mode;
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const jwt = require('./_helpers/jwt');
 const errorHandler = require('./_helpers/error-handler');
 const ServerSocket = require('./network/ServerSocket');
 
@@ -14,13 +13,11 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
 
-// use JWT auth to secure the api
-app.use(jwt());
-
+// admin service
+const adminService = require('./services/AdminService');
 
 // api routes
-// app.use("/customers", customerController);
-// app.use("/partners", partnerController);
+app.use("/admin", adminService);
 
 // global error handler
 app.use(errorHandler);

@@ -8,7 +8,7 @@
         "url": "https://github.com/anhhuy1020/vehicles-savers-service"
     },
     "scripts": {
-        "start": "node ./server.js"
+        "start": "node ./src/server.js"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",

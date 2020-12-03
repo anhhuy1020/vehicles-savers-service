@@ -1,11 +1,11 @@
 ﻿
-const validator = require('../validator/Validator');
+const validator = require('../_helpers/Validator');
 const Response = require('../network/Response');
 const jwt = require("jsonwebtoken");
 const EVENT_NAME = require('../const/EventName');
 const ERROR_CODE = require('../const/ErrorCode');
 const ROLE = require('../const/Role');
-const config = require('../config.json');
+const config = require('../config/config.json');
 const mode = config.mode;
 const secretKey = config[mode].secret;
 const bcrypt = require('bcryptjs');

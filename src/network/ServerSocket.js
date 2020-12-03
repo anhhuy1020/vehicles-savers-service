@@ -26,7 +26,7 @@ class ServerSocket{
         socket.on(EVENT_NAME.REGISTER, function(req){
             try {
                 console.log("register: ", req);
-                customerService.register(socket, req)
+                CustomerService.getInstance().register(socket, req)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
