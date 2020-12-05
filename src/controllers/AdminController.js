@@ -24,6 +24,7 @@ const feedbackService = require('../services/FeedbackService');
 // routes
 router.post("/login", login);
 router.get("/users", verifyToken, getAllUsers);
+router.get("/user-detail/", verifyToken, getUserDetail);
 router.get("/customers", verifyToken, getAllCustomers);
 router.get("/demands", verifyToken, getAllDemands);
 router.get("/feedbacks", verifyToken, getAllFeedbacks);
