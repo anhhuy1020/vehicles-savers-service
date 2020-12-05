@@ -19,6 +19,11 @@ const adminController = require('./controllers/AdminController');
 // api routes
 app.use("/admin", adminController);
 
+app.get("/", function(req, res, next){
+    console.log("connected");
+    res.status(200).json({message:"Ok"});
+})
+
 // global error handler
 app.use(errorHandler);
 
