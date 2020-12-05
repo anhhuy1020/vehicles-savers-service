@@ -23,7 +23,7 @@ app.use("/admin", adminController);
 app.use(errorHandler);
 
 // start server
-const port = config[mode].PORT;
+const port = process.env.PORT || config[mode].PORT;
 const httpServer = app.listen(port, function () {
     console.log('Server listening on port ' + port);
 });
