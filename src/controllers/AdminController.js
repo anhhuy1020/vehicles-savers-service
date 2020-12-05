@@ -24,7 +24,7 @@ const feedbackService = require('../services/FeedbackService');
 // routes
 router.post("/login", login);
 router.get("/users", verifyToken, getAllUsers);
-router.get("/user-detail/", verifyToken, getUserDetail);
+router.get("/user-detail/:id", verifyToken, getUserDetail);
 router.get("/customers", verifyToken, getAllCustomers);
 router.get("/demands", verifyToken, getAllDemands);
 router.get("/feedbacks", verifyToken, getAllFeedbacks);
@@ -76,23 +76,26 @@ function getAllUsers(req, res, next) {
 }
 
 async function getUserDetail(req, res, next) {
-  let user = await userService.getById(req.id);
+  let id = req.query.id;
+  let user = await userService.getById(id);
 
   if(!user){
     res.status(422).json({ errors: "Invalid id" });
-    return;    
+    return;
   }
   let info;
   let history;
   if(user.role == ROLE.CUSTOMER){
-    info = await Customer.findOne({userId: req.id})
-    history = await Demand.find({partnerId: req.id})
+    info = await Customer.findOne({userId: id})
+    history = await Demand.find({customerId:id})
   }
-  if(user.role == ROLE.CUSTOMER){
-    info = await Partner.findOne({userId: req.id})
-    history = await Demand.find({customerId: req.id})
+  if(user.role == ROLE.PARTNER){
+    info = await Partner.findOne({userId: id})
+    history = await Demand.find({partnerId: id})
   }
-  res.json({...user, ...info, history: history});
+
+
+  res.json({user, info, history});
 }
 
 function getAllCustomers(req, res, next) { 
