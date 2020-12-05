@@ -74,6 +74,26 @@ function getAllUsers(req, res, next) {
     .catch((err) => next(err));
 }
 
+async function getUserDetail(req, res, next) {
+  let user = await userService.getById(req.id);
+
+  if(!user){
+    res.status(422).json({ errors: "Invalid id" });
+    return;    
+  }
+  let info;
+  let history;
+  if(user.role == ROLE.CUSTOMER){
+    info = await Customer.findOne({userId: req.id})
+    history = await Demand.find({partnerId: req.id})
+  }
+  if(user.role == ROLE.CUSTOMER){
+    info = await Partner.findOne({userId: req.id})
+    history = await Demand.find({customerId: req.id})
+  }
+  res.json({...user, ...info, history: history});
+}
+
 function getAllCustomers(req, res, next) { 
   customerService
     .getAll()
