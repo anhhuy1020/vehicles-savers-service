@@ -346,6 +346,13 @@ class CustomerController {
                 return;
             }
 
+            let partnerInfo = await Partner.findOne({userId: demand.partnerId});
+            if(partnerInfo){
+                partnerInfo.rating = (partnerInfo.rating * partnerInfo.nRating + req.rating)/ (partnerInfo.nRating +1);
+                partnerInfo.nRating++;
+                await partnerInfo.save();
+            }
+
             let feedback = new Feedback(req);
             await feedback.save();
             demand.feedbackId = feedback._id;
