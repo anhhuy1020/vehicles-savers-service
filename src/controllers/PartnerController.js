@@ -21,6 +21,7 @@ const Bill = db.Bill;
 
 module.exports = {getInstance}
 const CustomerController = require('./CustomerController.js');
+const utility = require('../_helpers/utility');
 class PartnerController {
 
     constructor(serverSocket){
@@ -135,6 +136,13 @@ class PartnerController {
                 for(let i in docs){
                     let demand = docs[i];
                     let customerInfo;
+                    let distance = utility.calculateDistance(demand.pickupLatitude, demand.pickupLongitude, req.latitude, req.longitude);
+
+                    console.log("distance = ", distance);
+                    if(distance > req.range){
+                        continue;
+                    }
+
                     if(demand.customerId != ""){
                         let customer = await Customer.findOne({userId: demand.customerId});
                         let user = await User.findById(demand.customerId);

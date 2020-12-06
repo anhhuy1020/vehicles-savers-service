@@ -62,6 +62,12 @@ function fetchListDemand (data) {
     if(isNaN(data['longitude'])){
       result.push("longitude is not number!");
     }
+    if(isNaN(data['range'])){
+      result.push("Range is not number!");
+    }
+    if (data['range'] < 5){
+      result.push("Range must > 5km!");
+    }
   } catch (e){
     console.log(e);
     result.push("Invalid req data: " + JSON.stringify(data));
