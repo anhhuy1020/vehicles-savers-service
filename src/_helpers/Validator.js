@@ -74,6 +74,23 @@ function fetchListDemand (data) {
   }
   return result;
 }
+
+function updateLocation (data) {
+  let result = [];
+  try {
+    if(isNaN(data['latitude'])){
+      result.push("latitude is not number!");
+    }
+    if(isNaN(data['longitude'])){
+      result.push("longitude is not number!");
+    }
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
+
 function acceptDemand (data) {
   let result = [];
   try {
@@ -120,7 +137,7 @@ function evaluate (data) {
   let result = [];
   try {
     if(!data['demandId']){
-      result.push("demandId is bull!");
+      result.push("demandId is null!");
     }
   
     if(isNaN(data['rating'])){
@@ -137,6 +154,19 @@ function evaluate (data) {
   }
   return result;
 }
+function cancelDemand (data) {
+  let result = [];
+  try {
+    if(!data || !data['reason']){
+      result.push("There must be a reason to cancel!");
+    }
+
+  } catch (e){
+    console.log(e);
+    result.push("Invalid req data: " + JSON.stringify(data));
+  }
+  return result;
+}
 
 
 module.exports = {
@@ -144,7 +174,9 @@ module.exports = {
     validateLogin,
     createDemand,
     fetchListDemand,
+    updateLocation,
     acceptDemand,
     invoice,
-    evaluate
+    evaluate,
+    cancelDemand
 }

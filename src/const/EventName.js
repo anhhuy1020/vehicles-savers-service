@@ -3,6 +3,7 @@ const EVENT_NAME = {
     REGISTER: "register",
     FETCH_LIST_DEMAND: "fetch_list_demand",
     FETCH_CURRENT_DEMAND: "fetch_current_demand",
+    UPDATE_LOCATION: "update_location",
     CREATE_DEMAND: "create_demand",
     FETCH_HISTORY: "fetch_history",
     CANCEL_DEMAND: "cancel_demand",

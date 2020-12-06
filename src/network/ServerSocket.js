@@ -48,9 +48,9 @@ class ServerSocket{
             }
         });
 
-        socket.on(EVENT_NAME.CANCEL_DEMAND, function(token){
+        socket.on(EVENT_NAME.CANCEL_DEMAND, function(req, token){
             try {
-                CustomerController.getInstance().cancelDemand(socket, token)
+                CustomerController.getInstance().cancelDemand(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }
@@ -117,9 +117,26 @@ class ServerSocket{
             }
         });
 
+
+        socket.on(EVENT_NAME.UPDATE_LOCATION, function(req, token){
+            try {
+                PartnerController.getInstance().updateLocation(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
         socket.on(EVENT_NAME.ACCEPT_DEMAND, function(req, token){
             try {
                 PartnerController.getInstance().acceptDemand(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
+        socket.on(EVENT_NAME.CANCEL_DEMAND, function(req, token){
+            try {
+                PartnerController.getInstance().cancelDemand(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }

@@ -179,6 +179,56 @@ class CustomerController {
         }
     }
 
+
+    async cancelDemand(socket, req, token) {
+        try {
+            let customer =  await this.verifyToken(token);
+
+            if(!customer){
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            const errors = validator.cancelDemand(req);
+
+            if (errors.length > 0) {
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, errors));
+                return;
+            }
+
+            let demand;
+            if(customer.currentDemand){
+                demand = await Demand.findById(customer.currentDemand);
+            }
+            if(!demand){
+                console.log("cancelDemand demand is null: ");
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "You don't have any demand to cancel!"));
+                return;
+            }
+            if(demand.status != DEMAND_STATUS.SEARCHING_PARTNER){
+                console.log("cancelDemand demand.status: ", demand.status);
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "You cannot cancel this demand!"));
+                return;
+            }
+
+            demand.status = DEMAND_STATUS.CANCELED;
+            demand.canceledReason = req['reason'];
+            demand.canceledBy = customer.userId;
+            customer.history.push(demand._id);
+            customer.currentDemand = "";
+            await demand.save();
+            await customer.save();
+
+            let res = await this.getDemandInfo(demand._id);
+            console.log("cancelDemand: ", res);
+            this.sendToAllDevice(customer.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+
+        } catch(e){
+            console.log("createDemand: ", e);
+            socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
     async fetchCurrentDemand(socket, token) {
         try {
             let customer =  await this.verifyToken(token);
@@ -383,6 +433,17 @@ class CustomerController {
             let customerInfo = {};
             let partnerInfo = {};
 
+            let canceledReason = '';
+            let canceledBy = ''
+
+            if(demand.status == DEMAND_STATUS.CANCELED){
+                canceledReason = demand.canceledReason;
+                if(demand.canceledBy){
+                    let canceledUser = await User.findById(demand.canceledBy);
+                    if(canceledUser) canceledBy = canceledUser.name;
+                }
+            }
+
             if (demand.customerId){
                 let customer = await Customer.findOne({userId: demand.customerId});
                 if(customer){
@@ -408,6 +469,7 @@ class CustomerController {
                     partnerInfo.nRating = partner.nRating;
                     partnerInfo.nHandling = partner.history.length
                 }
+
                 let userPartner = await User.findById(partner.userId);
                 if (userPartner){
                         partnerInfo.name =userPartner.name;
@@ -451,6 +513,8 @@ class CustomerController {
                 messages: demand.messages,
                 createdDate: demand.createdDate,
                 completedDate: demand.completedDate,
+                canceledReason: canceledReason,
+                canceledBy: canceledBy,
                 customer: Object.keys(customerInfo).length === 0? null: customerInfo,
                 partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,
                 bill: Object.keys(billInfo).length === 0? null: billInfo,

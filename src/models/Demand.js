@@ -15,7 +15,9 @@ const schema = new Schema({
     feedbackId: {type: String, require: false, default: ""},
     createdDate: { type: Date, require:false, default: Date.now },
     messages: {type: Array, require: false, default: []},
-    completedDate: {type: Date}
+    completedDate: {type: Date},
+    canceledReason: {type: String, required: false, default: ""},
+    canceledBy:{type: String, required: false, default: ''}
 });
 
 module.exports = mongoose.model('Demand', schema);

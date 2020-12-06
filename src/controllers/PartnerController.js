@@ -22,6 +22,7 @@ const Bill = db.Bill;
 module.exports = {getInstance}
 const CustomerController = require('./CustomerController.js');
 const utility = require('../_helpers/utility');
+const CustomerService = require('../services/CustomerService');
 class PartnerController {
 
     constructor(serverSocket){
@@ -112,7 +113,6 @@ class PartnerController {
 
     async fetchListDemand(socket, req, token) {
         try {
-            console.log("fetchListDemand", req, token);
             let partner =  await this.verifyToken(token);
 
             if(!partner){
@@ -138,7 +138,6 @@ class PartnerController {
                     let customerInfo;
                     let distance = utility.calculateDistance(demand.pickupLatitude, demand.pickupLongitude, req.latitude, req.longitude);
 
-                    console.log("distance = ", distance);
                     if(distance > req.range){
                         continue;
                     }
@@ -224,6 +223,67 @@ class PartnerController {
             socket.emit(EVENT_NAME.ACCEPT_DEMAND, new Response().error(ERROR_CODE.FAIL, "Fail"));
         }
     }
+
+    async cancelDemand(socket, req, token) {
+        try {
+            let partner =  await this.verifyToken(token);
+
+            if(!partner){
+                console.log("cancelDemand partner not found", token);
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            const errors = validator.cancelDemand(req);
+
+            if (errors.length > 0) {
+                console.log("cancelDemand partner errors", errors, req);
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, errors));
+                return;
+            }
+
+            let demand;
+            if(partner.currentDemand){
+                demand = await Demand.findById(partner.currentDemand);
+            }
+            if(!demand){
+                console.log("cancelDemand demand is null: ");
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "You don't have any demand to cancel!"));
+                return;
+            }
+            if(demand.status != DEMAND_STATUS.HANDLING){
+                console.log("cancelDemand demand.status: ", demand.status);
+                socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "You cannot cancel this demand!"));
+                return;
+            }
+
+            demand.status = DEMAND_STATUS.CANCELED;
+            demand.canceledReason = req['reason'];
+            demand.canceledBy = partner.userId;
+            partner.history.push(demand._id);
+            partner.currentDemand = "";
+            if(demand.customerId){
+                let customer = await Customer.findOne({userId: demand.customerId});
+                if(customer){
+                    customer.currentDemand = "";
+                    customer.history.push(demand._id);
+                    await customer.save();
+                }
+            }
+            await demand.save();
+            await partner.save();
+
+            let res = await this.getDemandInfo(demand._id);
+            console.log("cancelDemand: ", res);
+            this.sendToAllDevice(partner.userId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+            CustomerController.getInstance().sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+
+        } catch(e){
+            console.log("createDemand: ", e);
+            socket.emit(EVENT_NAME.CANCEL_DEMAND, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
 
     async invoice(socket, req, token) {
         try {
@@ -321,6 +381,53 @@ class PartnerController {
         }
     }
 
+    async updateLocation(socket, req, token) {
+        try {
+            let partner =  await this.verifyToken(token);
+
+            if(!partner){
+                console.log("UPDATE_LOCATION partner null", token);
+                socket.emit(EVENT_NAME.UPDATE_LOCATION, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            const errors = validator.updateLocation(req);
+
+            if (errors.length > 0) {
+                console.log("UPDATE_LOCATION errors", errors);
+                socket.emit(EVENT_NAME.UPDATE_LOCATION, new Response().error(ERROR_CODE.FAIL, errors));
+                return;
+            }
+
+            if(partner.currentDemand == ""){
+                console.log("UPDATE_LOCATION currentDemand", partner.currentDemand);
+                socket.emit(EVENT_NAME.UPDATE_LOCATION, new Response().error(ERROR_CODE.FAIL, "Haven't had demand yet"));
+                return;
+            }
+
+            let demand = await Demand.findById(partner.currentDemand);
+            if(!demand){
+                socket.emit(EVENT_NAME.UPDATE_LOCATION, new Response().error(ERROR_CODE.FAIL, "Demand not found"));
+                return;
+            }
+            if(demand.status != DEMAND_STATUS.HANDLING){
+                socket.emit(EVENT_NAME.UPDATE_LOCATION, new Response().error(ERROR_CODE.FAIL, "Not handling phase"));
+                return;
+            }
+
+            partner.latitude = req.latitude;
+            partner.longitude = req.longitude;
+            await partner.save();
+
+            let res = await this.getDemandInfo(demand._id);
+
+            CustomerController.getInstance().sendToAllDevice(demand.customerId, EVENT_NAME.FETCH_CURRENT_DEMAND, new Response().json(res));
+        } catch(e){
+            console.log("updateLocation: ", e);
+            socket.emit(EVENT_NAME.UPDATE_LOCATION, new Response().error(ERROR_CODE.FAIL, "Fail"));
+        }
+    }
+
 
     attachSocketToPartner(userId, socket){
         if(!this.listPartnerSocket[userId]){
@@ -348,6 +455,18 @@ class PartnerController {
             let customerInfo = {};
             let partnerInfo = {};
 
+            let canceledReason = '';
+            let canceledBy = ''
+
+            if(demand.status == DEMAND_STATUS.CANCELED){
+                canceledReason = demand.canceledReason;
+                if(demand.canceledBy){
+                    let canceledUser = await User.findById(demand.canceledBy);
+                    if(canceledUser) canceledBy = canceledUser.name;
+                }
+            }
+
+
             if (demand.customerId.length){
                 let customer = await Customer.findOne({userId: demand.customerId});
                 if(customer){
@@ -369,6 +488,10 @@ class PartnerController {
                     partnerInfo.avatarUrl = partner.avatarUrl;
                     partnerInfo.latitude = partner.latitude;
                     partnerInfo.longitude = partner.longitude;
+                    partnerInfo.rating = partner.rating;
+                    partnerInfo.nRating = partner.nRating;
+                    partnerInfo.nHandling = partner.history.length
+
                 }
                 let userPartner = await User.findById(demand.partnerId);
                 if (userPartner){
@@ -398,6 +521,8 @@ class PartnerController {
                 pickupLongitude: demand.pickupLongitude,
                 createdDate: demand.createdDate,
                 completedDate: demand.completedDate,
+                canceledReason: canceledReason,
+                canceledBy: canceledBy,
                 messages: demand.messages,
                 customer: Object.keys(customerInfo).length === 0? null: customerInfo,
                 partner: Object.keys(partnerInfo).length === 0? null: partnerInfo,
