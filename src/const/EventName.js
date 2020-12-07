@@ -11,7 +11,8 @@ const EVENT_NAME = {
     INVOICE: "invoice",
     PAY: "pay",
     CHAT: "chat",
-    EVALUATE: "evaluate"
+    EVALUATE: "evaluate",
+    UPDATE_PROFILE: "update_profile"
 }
 
 module.exports = EVENT_NAME;

@@ -8,6 +8,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const errorHandler = require('./_helpers/error-handler');
 const ServerSocket = require('./network/ServerSocket');
+const path = require('path');
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -23,6 +24,11 @@ app.get("/", function(req, res, next){
     console.log("connected");
     res.status(200).json({message:"Ok"});
 })
+
+app.get("/avatars/:id", async (req, res) => {
+    let filepath = await path.join(__dirname + `/assets/images/avatars/${req.params.id}`);
+    res.sendFile(filepath);
+});
 
 // global error handler
 app.use(errorHandler);

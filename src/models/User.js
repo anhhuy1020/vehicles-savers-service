@@ -5,7 +5,7 @@ const schema = new Schema({
     email: { type: String, unique: true, required: true },
     hash: { type: String, required: true },
     name: { type: String, required: true },
-    role: {type: Number, require: true},
+    role: {type: Number, required: true},
     createdDate: { type: Date, default: Date.now }
 });
 

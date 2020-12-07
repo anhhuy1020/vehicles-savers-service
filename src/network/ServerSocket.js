@@ -32,6 +32,14 @@ class ServerSocket{
             }
         });
 
+        socket.on(EVENT_NAME.UPDATE_PROFILE, function(req, token){
+            try {
+                CustomerController.getInstance().updateProfile(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
         socket.on(EVENT_NAME.CREATE_DEMAND, function(req, token){
             try {
                 CustomerController.getInstance().createDemand(socket, req, token)
@@ -96,6 +104,14 @@ class ServerSocket{
         socket.on(EVENT_NAME.LOGIN, function(req){
             try {
                 PartnerController.getInstance().login(socket, req)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
+        socket.on(EVENT_NAME.UPDATE_PROFILE, function(req, token){
+            try {
+                PartnerController.getInstance().updateProfile(socket, req, token)
             } catch(e) {
                 console.log("Exception while handling " + e);
             }

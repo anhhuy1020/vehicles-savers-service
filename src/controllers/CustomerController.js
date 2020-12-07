@@ -16,6 +16,7 @@ const Partner = db.Partner;
 const Feedback = db.Feedback;
 const Bill = db.Bill;
 const secretKey = config[mode].secret;
+const avatarSaver = require('../_helpers/avatarSaver');
 
 
 module.exports = {getInstance}
@@ -131,6 +132,69 @@ class CustomerController {
             socket.emit(EVENT_NAME.REGISTER, new Response().json(res));
         } catch(e){
             socket.emit(EVENT_NAME.LOGIN, new Response().error(ERROR_CODE.FAIL, e));
+        }
+    }
+
+    async updateProfile(socket, req, token) {
+        try {
+            let customer =  await this.verifyToken(token);
+
+            if(!customer){
+                socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            const errors = validator.updateProfile(req);
+
+            if (errors.length > 0) {
+                console.log("upload profile errors", errors, req);
+                socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, errors));
+                return;
+            }
+
+            let user = await User.findById(customer.userId);
+
+            if(!user){
+                console.log("upload profile user not found", customer.userId)
+                socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, 'user not found!'));
+                return;
+            }
+
+            if(req['name']) user.name = req['name'];
+            if(req['email']) user.email = req['email'];
+            if(req['phone']) customer.phone = req['phone'];
+            if(req['address']) customer.address = req['address'];
+            if(req['avatarUrl']){
+                try{
+                    let filename = await avatarSaver.saveAvatar(req.avatarUrl);
+                    if(filename){
+                        customer.avatarUrl = config[mode].HOST + '/avatars/' + filename;
+                        console.log('new avatarUrl: ', (config[mode].HOST + '/avatars/' + filename));
+                    }
+                } catch (e){
+                    console.log("Save avatar exception: ", e);
+                }
+            }
+
+            await customer.save();
+            await user.save();
+
+            let res = {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                address: customer.address,
+                phone: customer.phone,
+                avatarUrl: customer.avatarUrl
+            }
+
+            console.log("update profile success", res);
+
+            this.sendToAllDevice(customer.userId, EVENT_NAME.UPDATE_PROFILE, new Response().json(res));
+
+        } catch(e){
+            console.log("createDemand: ", e);
+            socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, "Fail"));
         }
     }
 
@@ -573,6 +637,9 @@ class CustomerController {
         }
 
         let customer = await Customer.findOne({userId: payload.id});
+        if(!customer){
+            customer = new Customer({userId: payload.id})
+        }
         return customer;
     }
 }

@@ -3,9 +3,9 @@ const Schema = mongoose.Schema;
 
 const schema = new Schema({
     demandId: { type: String, unique: true, required: true },
-    rating: {type: Number, require: true},
-    comment: {type: String, require: false},
-    images: {type: Array, require: false},
+    rating: {type: Number, required: true},
+    comment: {type: String, required: false},
+    images: {type: Array, required: false},
     createdDate: { type: Date, default: Date.now },
 });
 

@@ -168,6 +168,24 @@ function cancelDemand (data) {
   return result;
 }
 
+function updateProfile (data){
+  let result = [];
+  try {
+    if(data['name'] && validator.isAlpha(data['name'], ['vi-VN'])){
+      result.push("Name is invalid!");
+    }
+    if(data['phone'] && !validator.isMobilePhone(data['phone'])){
+      result.push("Phone is invalid!");
+    }
+    if(data['email'] && !validator.isEmail(data['email'])){
+      result.push("Email is invalid!");
+    }
+  } catch (e){
+    result.push("Invalid req data: ", "\n", data, "\n,", e)
+  }
+  return result;
+}
+
 
 module.exports = {
     validateRegister,
@@ -178,5 +196,6 @@ module.exports = {
     acceptDemand,
     invoice,
     evaluate,
-    cancelDemand
+    cancelDemand,
+    updateProfile
 }

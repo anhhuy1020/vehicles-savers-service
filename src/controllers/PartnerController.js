@@ -17,7 +17,7 @@ const User = db.User;
 const Demand = db.Demand;
 const Customer = db.Customer;
 const Bill = db.Bill;
-
+const avatarSaver = require('../_helpers/avatarSaver');
 
 module.exports = {getInstance}
 const CustomerController = require('./CustomerController.js');
@@ -80,6 +80,69 @@ class PartnerController {
         } catch(e){
             console.log(e);
             socket.emit(EVENT_NAME.LOGIN, new Response().error(ERROR_CODE.FAIL, e));
+        }
+    }
+
+    async updateProfile(socket, req, token) {
+        try {
+            let partner =  await this.verifyToken(token);
+
+            if(!partner){
+                socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, "Invalid access"));
+                return;
+            }
+
+            const errors = validator.updateProfile(req);
+
+            if (errors.length > 0) {
+                console.log("upload profile errors", errors, req);
+                socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, errors));
+                return;
+            }
+
+            let user = await User.findById(partner.userId);
+
+            if(!user){
+                console.log("upload profile user not found", partner.userId)
+                socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, 'user not found!'));
+                return;
+            }
+
+            if(req['name']) user.name = req['name'];
+            if(req['email']) user.email = req['email'];
+            if(req['phone']) partner.phone = req['phone'];
+            if(req['address']) partner.address = req['address'];
+            if(req['avatarUrl']){
+                try{
+                    let filename = await avatarSaver.saveAvatar(req.avatarUrl);
+                    if(filename){
+                        partner.avatarUrl = config[mode].HOST + '/avatars/' + filename;
+                        console.log('new avatarUrl: ', (config[mode].HOST + '/avatars/' + filename));
+                    }
+                } catch (e){
+                    console.log("Save avatar exception: ", e);
+                }
+            }
+
+            await partner.save();
+            await user.save();
+
+            let res = {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                address: partner.address,
+                phone: partner.phone,
+                avatarUrl: partner.avatarUrl
+            }
+
+            console.log("update profile success", res);
+
+            this.sendToAllDevice(partner.userId, EVENT_NAME.UPDATE_PROFILE, new Response().json(res));
+
+        } catch(e){
+            console.log("createDemand: ", e);
+            socket.emit(EVENT_NAME.UPDATE_PROFILE, new Response().error(ERROR_CODE.FAIL, "Fail"));
         }
     }
 
@@ -543,7 +606,6 @@ class PartnerController {
             if (listId.hasOwnProperty(key)) {
 
                 const demandId = listId[key];
-                console.log("key", key, demandId);
 
                 if(demandId){
                     let demand = await this.getDemandInfo(demandId);
@@ -576,7 +638,11 @@ class PartnerController {
             return null
         }
 
-        return await Partner.findOne({userId: payload.id});
+        let partner =  await Partner.findOne({userId: payload.id});
+        if(!partner){
+            partner = new Partner({userId: payload.id})
+        }
+        return partner;
     }
 }
 let instance;

@@ -6,5 +6,10 @@
       "connectionString": "mongodb+srv://huyhq4:Huy3763958@cluster0.xs2nt.mongodb.net/vehicles-saver?retryWrites=true&w=majority",
       "secret": "HuyHQ4"
     },
+    "release": {
+      "HOST": "https://vehicle-saver.herokuapp.com",
+      "connectionString": "mongodb+srv://huyhq4:Huy3763958@cluster0.xs2nt.mongodb.net/vehicles-saver?retryWrites=true&w=majority",
+      "secret": "HuyHQ4"
+    },
     "fee": 30000
 }
