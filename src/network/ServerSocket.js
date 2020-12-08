@@ -88,6 +88,14 @@ class ServerSocket{
             }
         });
 
+        socket.on(EVENT_NAME.LOGOUT, function(){
+            try {
+                CustomerController.getInstance().logout(socket);
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+
         socket.on("disconnect", function(){
             try {
                 CustomerController.getInstance().detachSocketFromCustomer(socket['userId'], socket)
@@ -171,6 +179,13 @@ class ServerSocket{
             try {
                 console.log("chat")
                 PartnerController.getInstance().chat(socket, req, token)
+            } catch(e) {
+                console.log("Exception while handling " + e);
+            }
+        });
+        socket.on(EVENT_NAME.LOGOUT, function(){
+            try {
+                PartnerController.getInstance().logout(socket);
             } catch(e) {
                 console.log("Exception while handling " + e);
             }

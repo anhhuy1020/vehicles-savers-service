@@ -482,12 +482,24 @@ class CustomerController {
         }
     }
 
+    logout(socket){
+        if(socket && socket.userId && this.listCustomerSocket[socket.userId]){
+            let index = this.listCustomerSocket[socket.userId].indexOf(socket);
+            if(index >= 0){
+                this.listCustomerSocket[socket.userId].splice(index, 1);
+            }
+        }
+    }
+
+
     attachSocketToCustomer(userId, socket){
         if(!this.listCustomerSocket[userId]){
             this.listCustomerSocket[userId] = [];
         }
         this.listCustomerSocket[userId].push(socket);
+        socket.userId = userId;
     }
+
     async getDemandInfo(demandId) {
         if (!demandId){
             return null;
@@ -616,6 +628,7 @@ class CustomerController {
         if(index > 0){
             this.listCustomerSocket.splice(index, 1);
         }
+        socket.userId = userId;
     }
 
     sendToAllDevice(userId, eventName, data){

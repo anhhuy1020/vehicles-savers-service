@@ -492,11 +492,22 @@ class PartnerController {
     }
 
 
+    logout(socket){
+        if(socket && socket.userId && this.listPartnerSocket[socket.userId]){
+            let index = this.listPartnerSocket[socket.userId].indexOf(socket);
+            if(index >= 0){
+                this.listPartnerSocket[socket.userId].splice(index, 1);
+            }
+        }
+    }
+
+
     attachSocketToPartner(userId, socket){
         if(!this.listPartnerSocket[userId]){
             this.listPartnerSocket[userId] = [];
         }
         this.listPartnerSocket[userId].push(socket);
+        socket.userId = userId;
     }
 
     detachSocketFromPartner(userId, socket){
@@ -595,6 +606,7 @@ class PartnerController {
             return null;
         }
     }
+
 
     async getDemandHistory(listId){
         if (listId.length <= 0){
