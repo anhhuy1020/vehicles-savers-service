@@ -1,12 +1,13 @@
 const { isEmpty } = require('underscore');
+const ROLE = require('../const/Role');
 
 validator = require('validator');
 
 function validateRegister (data){
   let result = [];
   try {
-    if(validator.isAlpha(data['name'], ['vi-VN'])){
-      result.push("Name is invalid!");
+    if(!data['name']){
+      result.push("Name is required!");
     }
     if(!validator.isMobilePhone(data['phone'])){
       result.push("Phone is invalid!");
@@ -186,6 +187,34 @@ function updateProfile (data){
   return result;
 }
 
+function validateAdminCreateUser (data){
+  let result = [];
+  try {
+    if(!data['name']){
+      result.push("Name is required!");
+    }
+    if(!data.hasOwnProperty('role')){
+      result.push("Role is required!");
+    }
+    if(!Number.isInteger(data['role']) && data['role'] <  ROLE.ADMIN || data['role'] > ROLE.CUSTOMER){
+      result.push("Role is invalid!");
+    }
+    if(data['role'] == ROLE.ADMIN && !validator.isMobilePhone(data['phone'])){
+      result.push("Phone is invalid!");
+    }
+    if(!validator.isEmail(data['email'])){
+      result.push("Email is invalid!");
+    }
+    if(!validator.matches(data['password'], /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z]{8,}$/)){
+      result.push("Password is invalid!");
+    }
+  } catch (e){
+    result.push("Invalid req data: ", "\n", data, "\n,", e)
+  }
+  return result;
+}
+
+
 
 module.exports = {
     validateRegister,
@@ -197,5 +226,6 @@ module.exports = {
     invoice,
     evaluate,
     cancelDemand,
-    updateProfile
+    updateProfile,
+    validateAdminCreateUser
 }
