@@ -20,16 +20,16 @@ const partnerService = require('../services/PartnerService');
 const customerService = require('../services/CustomerService');
 const demandService = require('../services/DemandService');
 const feedbackService = require('../services/FeedbackService');
+const billService = require('../services/BillService');
 
 // routes
 router.post("/login", login);
 router.get("/users", verifyToken, getAllUsers);
 router.post("/users/create", verifyToken, createUser);
 router.get("/user-detail/:id", verifyToken, getUserDetail);
-router.get("/customers", verifyToken, getAllCustomers);
 router.get("/demands", verifyToken, getAllDemands);
+router.get("/demand-detail/:id", verifyToken, getDemandDetail);
 router.get("/feedbacks", verifyToken, getAllFeedbacks);
-router.get("/partners", verifyToken, getAllPartners);
 
 module.exports = router;
 
@@ -137,13 +137,6 @@ async function createUser(req, res, next) {
   }
 }
 
-function getAllCustomers(req, res, next) {
-  customerService
-    .getAll()
-    .then((customers) => res.json({ customers }))
-    .catch((err) => next(err));
-}
-
 function getAllDemands(req, res, next) {
   demandService
     .getAll()
@@ -151,13 +144,45 @@ function getAllDemands(req, res, next) {
     .catch((err) => next(err));
 }
 
-function getAllPartners(req, res, next) {
-  partnerService
-    .getAll()
-    .then((partners) => res.json({ partners }))
-    .catch((err) => next(err));
-}
+async function getDemandDetail(req, res, next) {
+  let id = req.query.id;
+  let demand = await demandService.getById(id);
 
+  if (!demand) {
+    res.status(422).json({ errors: "Invalid id" });
+    return;
+  }
+
+  let customer = {};
+  let partner = {};
+  let bill = {};
+  let feedback = {};
+
+  if (demand.customerId) {
+    let customerUser = await userService.getById(demand.customerId);
+    let customerInfo = await customerService.getByUserId(demand.customerId)
+    customer = {
+      "user": customerUser,
+      "info": customerInfo
+    }
+  }
+  if (demand.partnerId) {
+    let partnerUser = await userService.getById(demand.partnerId);
+    let partnerInfo = await partnerService.getByPartnerId(demand.partnerId);
+    partner = {
+      "user": partnerUser,
+      "info": partnerInfo
+    }
+  }
+  if (demand.billId) {
+    bill = await billService.getById(demand.billId)
+  }
+  if (demand.feedbackId) {
+    feedback = await feedbackService.getById(demand.feedbackId)
+  }
+
+  res.json({"demand": demand, "customer": customer, "partner": partner, "bill": bill, "feedback":feedback });
+}
 function getAllFeedbacks(req, res, next) {
   feedbackService
     .getAll()

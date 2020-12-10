@@ -34,7 +34,7 @@ async function getById(id) {
 }
 
 async function getByPartnerId(partnerId) {
-    return await Partner.findOne({partnerId: partnerId});
+    return await Partner.findOne({userId: partnerId});
 }
 
 
