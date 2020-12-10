@@ -1,5 +1,5 @@
 ﻿{
-    "mode" : "dev",
+    "mode" : "release",
     "dev": {
       "PORT": 3002,
       "HOST": "http://localhost:3002",
