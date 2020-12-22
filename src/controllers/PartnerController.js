@@ -516,7 +516,7 @@ class PartnerController {
         }
         let index = this.listPartnerSocket[userId].indexOf(socket);
         if(index > 0){
-            this.listPartnerSocket.splice(index, 1);
+            this.listPartnerSocket[userId].splice(index, 1);
         }
     }
 

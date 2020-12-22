@@ -626,7 +626,7 @@ class CustomerController {
         }
         let index = this.listCustomerSocket[userId].indexOf(socket);
         if(index > 0){
-            this.listCustomerSocket.splice(index, 1);
+            this.listCustomerSocket[userId].splice(index, 1);
         }
         socket.userId = userId;
     }
